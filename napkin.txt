@@ -1,0 +1,18 @@
+=== Arcanum Dialog ===
+
+== Column names: ==
+
+B: Number (line number)
+D: Text
+F: G field? (Gendered?)
+H: Intelligence (IQ Field)
+    - Positive number: minimum IQ
+    - Negative number: maximum IQ
+J: Test
+L: Response (negative number calls script)
+N: Result
+
+== RegEx patter ==
+"^\{(?<number>\d+)}\{(?<text>.+)}\{(?<g>.*)}\{(?<intelligence>\d*)}\{(?<test>\w*)}\{(?<response>\d*)}\{(?<result>\w*)}
+
+
