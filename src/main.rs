@@ -4,12 +4,21 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
-use std::io;
 use std::io::BufRead;
-#[derive(Debug)]
+use std::time::Duration;
+use std::{io, thread};
+// ==============
+// === PLAYER ===
+// ==============
+
+const INTELLIGENCE: i32 = 5;
+
+// ==============
+
+#[derive(Debug, Clone)]
 struct DialogLine {
     text: String,
-    g_field: Option<String>,
+    _g_field: Option<String>,
     intelligence: Option<i32>,
     test: Option<String>,
     response: Option<usize>,
@@ -17,6 +26,7 @@ struct DialogLine {
     choices: Vec<usize>,
 }
 
+// NOTE: The term dialog "tree" is somewhat of a misnomer, yet here we are...
 type DialogTree = HashMap<usize, DialogLine>;
 
 #[derive(Debug)]
@@ -25,9 +35,6 @@ enum NpcState {
     Waiting,
     Follower,
 }
-
-// PLAYER
-const INTELLIGENCE: u32 = 5;
 
 fn parse_dlg_file(file: &str) -> anyhow::Result<DialogTree> {
     let file = File::open(file)?;
@@ -84,7 +91,7 @@ fn parse_dlg_file(file: &str) -> anyhow::Result<DialogTree> {
 
         let dialog_line = DialogLine {
             text,
-            g_field: None,
+            _g_field: None,
             intelligence: _intelligence,
             test: _test,
             response,
@@ -128,7 +135,30 @@ impl Npc {
         }
     }
 
-    fn interact(&mut self, number: usize) {
+    fn set_state(&mut self, state: NpcState) {
+        match state {
+            NpcState::Stranger => println!("{} is now a stranger.\n", self.name),
+            NpcState::Waiting => println!("{} is now waiting where you left them.\n", self.name),
+            NpcState::Follower => println!("{} is now a follower.\n", self.name),
+        }
+        self.state = state;
+    }
+
+    fn interact(&mut self) {
+        match self.state {
+            NpcState::Stranger => println!(
+                "You approach the stranger. They introduce themselves as {}\n",
+                self.name
+            ),
+            NpcState::Waiting => println!(
+                "You approach {}. They have been waiting for you.\n",
+                self.name
+            ),
+            NpcState::Follower => println!("You turn to {}.\n", self.name),
+        }
+        self.interact_rec(1);
+    }
+    fn interact_rec(&mut self, number: usize) {
         if number == 0 {
             // Reached end
             return;
@@ -155,52 +185,55 @@ impl Npc {
             .unwrap();
 
         let choice_number = start + selection;
-        let Some(pc_line) = self.dialog_tree.get(&choice_number) else {
-            panic!("Invalid PC Line at {}", choice_number);
-        };
 
-        if let Some(intelligence) = &pc_line.intelligence {
-            if &(INTELLIGENCE as i32) < intelligence {
+        let pc_line = self.dialog_tree.get(&choice_number).cloned().unwrap();
+
+        // let Some(pc_line) = self.dialog_tree.get(&choice_number) else {
+        //     panic!("Invalid PC Line at {}", choice_number);
+        // };
+
+        if let Some(intelligence) = pc_line.intelligence {
+            if INTELLIGENCE < intelligence {
                 println!("Not enough intelligence to say this.");
-                return self.interact(choice_number);
+                return self.interact_rec(choice_number);
             }
         }
 
-        if let Some(test) = &pc_line.test {
+        if let Some(test) = pc_line.test {
             match (test.as_str(), &self.state) {
                 ("fo", NpcState::Follower) => (),
                 ("fo", _) => {
-                    println!("{} must be a follower for this action.", self.name);
-                    return self.interact(number);
+                    println!("X {} must be a follower for this action.\n", self.name);
+                    return self.interact_rec(number);
                 }
                 ("wa", NpcState::Waiting) => (),
                 ("wa", _) => {
-                    println!("{} is not currently waiting.", self.name);
-                    return self.interact(number);
+                    println!("X {} is not currently waiting.\n", self.name);
+                    return self.interact_rec(number);
                 }
                 _ => unimplemented!("Test opcode {} is not yet implemented!", test),
             }
         }
 
-        if let Some(result) = &pc_line.result {
+        if let Some(result) = pc_line.result {
             match result.as_str() {
-                "uw" => self.state = NpcState::Follower,
+                "uw" => self.set_state(NpcState::Follower),
                 "so" => println!("Result opcode 'so' (spread out) is not yet implemented!"),
                 "sc" => println!("Result opcode 'sc' (stay close) is not yet implemented!"),
-                "wa" => self.state = NpcState::Waiting,
-                "lv" => self.state = NpcState::Stranger,
+                "wa" => self.set_state(NpcState::Waiting),
+                "lv" => self.set_state(NpcState::Stranger),
                 _ => unimplemented!("Result opcode {} is not yet implemented!", result),
             }
         }
-        self.interact(pc_line.response.unwrap())
+        self.interact_rec(pc_line.response.unwrap())
     }
 }
 
 fn main() {
     let mut alice = Npc::new("Alice", "dlg/example.dlg", NpcState::Waiting);
-    println!("{}", alice);
-    alice.interact(1);
-    println!("{}", alice);
-    alice.interact(1);
-    println!("{}", alice);
+    println!();
+    for _ in 0..4 {
+        alice.interact();
+        thread::sleep(Duration::from_secs(2));
+    }
 }
