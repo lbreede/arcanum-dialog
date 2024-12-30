@@ -1,3 +1,4 @@
+use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use regex::Regex;
@@ -6,7 +7,6 @@ use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
-
 // ==============
 // === PLAYER ===
 // ==============
@@ -136,11 +136,16 @@ impl Npc {
     }
 
     fn set_state(&mut self, state: NpcState) {
-        match state {
-            NpcState::Stranger => println!("{} is now a stranger.\n", self.name),
-            NpcState::Waiting => println!("{} is now waiting where you left them.\n", self.name),
-            NpcState::Follower => println!("{} is now a follower.\n", self.name),
-        }
+        println!(
+            "  {}",
+            style(match state {
+                NpcState::Stranger => format!("✔ {} is now a stranger.\n", self.name),
+                NpcState::Waiting =>
+                    format!("✔ {} is now waiting where you left them.\n", self.name),
+                NpcState::Follower => format!("✔ {} is now a follower.\n", self.name),
+            })
+            .green()
+        );
         self.state = state;
     }
 
@@ -203,12 +208,22 @@ impl Npc {
             match (test.as_str(), &self.state) {
                 ("fo", NpcState::Follower) => (),
                 ("fo", _) => {
-                    println!("X {} must be a follower for this action.\n", self.name);
+                    println!(
+                        "  {}",
+                        style(format!(
+                            "X {} must be a follower for this action.\n",
+                            self.name
+                        ))
+                        .red()
+                    );
                     return self.interact_rec(number);
                 }
                 ("wa", NpcState::Waiting) => (),
                 ("wa", _) => {
-                    println!("X {} is not currently waiting.\n", self.name);
+                    println!(
+                        "  {}",
+                        style(format!("X {} is not currently waiting.\n", self.name)).red()
+                    );
                     return self.interact_rec(number);
                 }
                 _ => unimplemented!("Test opcode {} is not yet implemented!", test),
