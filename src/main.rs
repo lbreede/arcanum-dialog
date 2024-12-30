@@ -6,8 +6,11 @@ use rand::seq::IteratorRandom;
 use rand::Rng;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io;
 use std::io::BufRead;
+use std::path::Path;
+use std::string::ToString;
+use std::{env, fs, io};
+
 mod dialog;
 use dialog::DialogLine;
 
@@ -18,12 +21,14 @@ enum Gender {
 }
 
 // === PLAYER =================================================================
+const NAME: &str = "Lennart";
 const INTELLIGENCE: i32 = 5;
 const GENDER: Gender = Gender::Female;
 // ============================================================================
 
 // === NPC ====================================================================
 const NAMES: [&str; 6] = ["Alice", "Bob", "Charlie", "Dave", "Erin", "Frank"];
+// ============================================================================
 
 // NOTE: The term dialog "tree" is somewhat of a misnomer, yet here we are...
 type DialogTree = HashMap<usize, DialogLine>;
@@ -54,9 +59,6 @@ impl Distribution<NpcState> for StandardUniform {
     }
 }
 
-fn parse_field<T: std::str::FromStr>(field: &str) -> Option<T> {
-    field.trim().parse().ok()
-}
 fn parse_dialog_file(file: &str) -> anyhow::Result<DialogTree> {
     let file = File::open(file)?;
     let reader = io::BufReader::new(file);
@@ -66,7 +68,10 @@ fn parse_dialog_file(file: &str) -> anyhow::Result<DialogTree> {
     //  always be an NPC line, hopefully...
     let mut last_npc_number: usize = 0;
     for line in reader.lines() {
-        let line = line?;
+        let line = line?.trim().to_string();
+        if !line.starts_with("{") {
+            continue;
+        }
         match DialogLine::try_from(line) {
             Ok(dialog_line) => {
                 if dialog_line.response.is_none() {
@@ -84,6 +89,7 @@ fn parse_dialog_file(file: &str) -> anyhow::Result<DialogTree> {
     Ok(dialog_lines)
 }
 
+//region NPC
 #[derive(Debug)]
 /// A non-player character to interact with
 struct Npc {
@@ -93,7 +99,6 @@ struct Npc {
 }
 
 impl Npc {
-    #[allow(dead_code)]
     fn new(name: &str, dialog_file: &str, state: NpcState) -> Self {
         Self {
             name: name.to_string(),
@@ -102,7 +107,16 @@ impl Npc {
         }
     }
 
-    fn rand(dialog_file: &str) -> Self {
+    fn rand() -> Self {
+        let dir_path = Path::new("dlg/");
+        let entries = fs::read_dir(dir_path).ok().unwrap();
+        let dlg_files: Vec<String> = entries
+            .filter_map(Result::ok) // Filter out errors
+            .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "dlg"))
+            .filter_map(|entry| entry.path().to_str().map(|s| s.to_string()))
+            .collect();
+        let dlg_file = dlg_files.iter().choose_stable(&mut rand::rng()).unwrap();
+        println!("DEBUG: Loaded file {:?}\n", dlg_file);
         Self {
             name: NAMES
                 .iter()
@@ -110,7 +124,7 @@ impl Npc {
                 .unwrap()
                 .to_string(),
             state: rand::random(),
-            dialog_tree: parse_dialog_file(dialog_file).unwrap(),
+            dialog_tree: parse_dialog_file(dlg_file).unwrap(),
         }
     }
 
@@ -145,42 +159,37 @@ impl Npc {
 
     fn interact_rec(&mut self, number: usize) {
         if number == 0 {
-            // Reached end
-            return;
+            return; // Reached end
         }
-
         let Some(npc_line) = self.dialog_tree.get(&number) else {
             panic!("Invalid line number {}", number);
         };
-
-        let Some(start) = npc_line.choices.first() else {
-            // No choices for this npc line
+        if npc_line.choices.is_empty() {
             return;
-        };
-
+        }
         let mut items = vec![];
         for number in &npc_line.choices {
             items.push(&self.dialog_tree.get(number).unwrap().text)
         }
         let npc_text = npc_line.get_text(&GENDER);
-        let prompt = format!("{}: {}", &self.name, npc_text);
+        let prompt = format!("{}: {}", &self.name, npc_text.replace("@pcname@", NAME));
         let selection = Select::with_theme(&ColorfulTheme::default())
             .with_prompt(prompt)
             .items(&items)
             .interact()
             .unwrap();
 
-        let choice_number = start + selection;
-
-        let pc_line = self.dialog_tree.get(&choice_number).cloned().unwrap();
-
+        let pc_line = self
+            .dialog_tree
+            .get(&npc_line.choices[selection])
+            .unwrap()
+            .clone();
         if let Some(intelligence) = pc_line.intelligence {
             if INTELLIGENCE < intelligence {
-                println!("Not enough intelligence to say this.");
-                return self.interact_rec(choice_number);
+                println!("{}", style("Not enough intelligence to say this.").red());
+                return self.interact_rec(pc_line.number);
             }
         }
-
         if let Some(test) = pc_line.test {
             match (test.as_str(), &self.state) {
                 ("fo", NpcState::Follower) => (),
@@ -188,7 +197,7 @@ impl Npc {
                     println!(
                         "  {}",
                         style(format!(
-                            "X {} must be a follower for this action.\n",
+                            "{} must be a follower for this action.\n",
                             self.name
                         ))
                         .red()
@@ -199,31 +208,47 @@ impl Npc {
                 ("wa", _) => {
                     println!(
                         "  {}",
-                        style(format!("X {} is not currently waiting.\n", self.name)).red()
+                        style(format!("{} is not currently waiting.\n", self.name)).red()
                     );
                     return self.interact_rec(number);
                 }
-                _ => unimplemented!("Test opcode {} is not yet implemented!", test),
+                _ => {
+                    println!(
+                        "  {}",
+                        style(format!("Test opcode [{}] is not yet implemented!", test)).red()
+                    )
+                }
             }
         }
-
         if let Some(result) = pc_line.result {
             match result.as_str() {
                 "uw" => self.set_state(NpcState::Follower),
-                "so" => println!("Result opcode 'so' (spread out) is not yet implemented!"),
-                "sc" => println!("Result opcode 'sc' (stay close) is not yet implemented!"),
+                "so" => println!("Result opcode [so] (spread out) is not yet implemented!"),
+                "sc" => println!("Result opcode [sc] (stay close) is not yet implemented!"),
                 "wa" => self.set_state(NpcState::Waiting),
                 "lv" => self.set_state(NpcState::Stranger),
-                _ => unimplemented!("Result opcode {} is not yet implemented!", result),
+                _ => println!(
+                    "  {}",
+                    style(format!(
+                        "Result opcode [{}] is not yet implemented!",
+                        result
+                    ))
+                    .red()
+                ),
             }
         }
         self.interact_rec(pc_line.response.unwrap())
     }
 }
+//endregion
 
 fn main() {
-    let mut npc = Npc::rand("dlg/example.dlg");
-
+    let args: Vec<String> = env::args().collect();
+    let mut npc = match &args[..] {
+        [_, path] => Npc::new("Tim", path, NpcState::Follower),
+        [_] => Npc::rand(),
+        _ => panic!("Not sure how to handle {:?}", &args),
+    };
     let items = vec!["Talk", "Leave"];
     loop {
         let selection = Select::with_theme(&ColorfulTheme::default())
