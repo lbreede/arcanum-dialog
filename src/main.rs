@@ -4,9 +4,9 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
+use std::io;
 use std::io::BufRead;
-use std::time::Duration;
-use std::{io, thread};
+
 // ==============
 // === PLAYER ===
 // ==============
@@ -179,7 +179,7 @@ impl Npc {
         }
 
         let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt(npc_line.text.clone())
+            .with_prompt(format!("{}: {}", &self.name, &npc_line.text))
             .items(&items)
             .interact()
             .unwrap();
@@ -230,10 +230,19 @@ impl Npc {
 }
 
 fn main() {
-    let mut alice = Npc::new("Alice", "dlg/example.dlg", NpcState::Waiting);
-    println!();
-    for _ in 0..4 {
-        alice.interact();
-        thread::sleep(Duration::from_secs(2));
+    let mut npc = Npc::new("Alice", "dlg/example.dlg", NpcState::Waiting);
+
+    let items = vec!["Talk", "Leave"];
+    loop {
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("What do you want to do?")
+            .items(&items)
+            .interact()
+            .unwrap();
+        match selection {
+            0 => npc.interact(),
+            1 => break,
+            _ => unreachable!(),
+        }
     }
 }
