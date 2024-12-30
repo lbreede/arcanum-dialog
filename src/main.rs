@@ -193,10 +193,6 @@ impl Npc {
 
         let pc_line = self.dialog_tree.get(&choice_number).cloned().unwrap();
 
-        // let Some(pc_line) = self.dialog_tree.get(&choice_number) else {
-        //     panic!("Invalid PC Line at {}", choice_number);
-        // };
-
         if let Some(intelligence) = pc_line.intelligence {
             if INTELLIGENCE < intelligence {
                 println!("Not enough intelligence to say this.");
