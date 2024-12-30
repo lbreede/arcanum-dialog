@@ -1,34 +1,41 @@
 use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
-use regex::Regex;
+use rand::distr::{Distribution, StandardUniform};
+use rand::seq::IteratorRandom;
+use rand::Rng;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
-// ==============
-// === PLAYER ===
-// ==============
+mod dialog;
+use dialog::DialogLine;
 
-const INTELLIGENCE: i32 = 5;
-
-// ==============
-
-#[derive(Debug, Clone)]
-struct DialogLine {
-    text: String,
-    _g_field: Option<String>,
-    intelligence: Option<i32>,
-    test: Option<String>,
-    response: Option<usize>,
-    result: Option<String>,
-    choices: Vec<usize>,
+#[allow(dead_code)]
+enum Gender {
+    Male,
+    Female,
 }
+
+// === PLAYER =================================================================
+const INTELLIGENCE: i32 = 5;
+const GENDER: Gender = Gender::Female;
+// ============================================================================
+
+// === NPC ====================================================================
+const NAMES: [&str; 6] = ["Alice", "Bob", "Charlie", "Dave", "Erin", "Frank"];
 
 // NOTE: The term dialog "tree" is somewhat of a misnomer, yet here we are...
 type DialogTree = HashMap<usize, DialogLine>;
 
+impl DialogLine {
+    pub fn get_text(&self, gender: &Gender) -> &str {
+        match gender {
+            Gender::Male => &self.text,
+            Gender::Female => self.female_text.as_deref().unwrap_or(&self.text),
+        }
+    }
+}
 #[derive(Debug)]
 enum NpcState {
     Stranger,
@@ -36,79 +43,44 @@ enum NpcState {
     Follower,
 }
 
-fn parse_dlg_file(file: &str) -> anyhow::Result<DialogTree> {
+impl Distribution<NpcState> for StandardUniform {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> NpcState {
+        match rng.random_range(0..=2) {
+            0 => NpcState::Stranger,
+            1 => NpcState::Waiting,
+            2 => NpcState::Follower,
+            _ => unreachable!(),
+        }
+    }
+}
+
+fn parse_field<T: std::str::FromStr>(field: &str) -> Option<T> {
+    field.trim().parse().ok()
+}
+fn parse_dialog_file(file: &str) -> anyhow::Result<DialogTree> {
     let file = File::open(file)?;
     let reader = io::BufReader::new(file);
-
-    let re = Regex::new(
-        r"^\{\s*(?<number>\d+)\s*}\{(?<text>.+)}\{(?<g>.*)}\{\s*(?<intelligence>\d*)\s*}\{\s*(?<test>\w*)\s*}\{\s*(?<response>\d*)\s*}\{\s*(?<result>\w*)\s*}",
-    )?;
-    let text_re = Regex::new(r"^(?<opcode>\w):(?<value>\s\d+|)$")?;
-
     let mut dialog_lines: DialogTree = HashMap::new();
 
     // TODO: Choosing zero here only works because dialogs start at 1 and the first row should
-    //  always be an NPC line
+    //  always be an NPC line, hopefully...
     let mut last_npc_number: usize = 0;
-
     for line in reader.lines() {
         let line = line?;
-        let Some(caps) = re.captures(&line) else {
-            panic!("Failed to capture regex groups")
-        };
-
-        let number: usize = caps["number"].parse()?;
-
-        let mut text: String = caps["text"].trim().to_string();
-        if let Some(text_caps) = text_re.captures(&text) {
-            let opcode = &text_caps["opcode"];
-            // TODO: Implement using the value as well as the opcode
-            let _value = text_caps["value"].trim();
-            text = match opcode {
-                "B" => "I would like to trade with you.".to_string(),
-                "U" => "I need you to help me with one of your skills.".to_string(),
-                "K" => "I have a question about the world.".to_string(),
-                _ => unimplemented!("Text opcode '{}' is not yet implemented!", opcode),
-            };
-        }
-
-        let _g_field: Option<String> = Some(caps["g"].trim().to_string()).filter(|s| !s.is_empty());
-
-        // TODO: The match-statement here wraps the i32 in `Some` if parsed correctly, and `None`
-        //  otherwise. This may not be the most desirable outcome. Instead, we should attempt to
-        //  wrap a valid i32 in `Some`, turn an empty string into `None`, and panic, or at least
-        //  print a warning, for anything else, such as "abc".
-        let _intelligence = match caps["intelligence"].parse::<i32>() {
-            Ok(n) => Some(n),
-            Err(_) => None,
-        };
-        let _test: Option<String> = Some(caps["test"].to_string()).filter(|s| !s.is_empty());
-        let response: Option<usize> = match caps["response"].parse::<usize>() {
-            Ok(n) => Some(n),
-            Err(_) => None,
-        };
-        let _result: Option<String> = Some(caps["result"].to_string()).filter(|s| !s.is_empty());
-
-        let dialog_line = DialogLine {
-            text,
-            _g_field: None,
-            intelligence: _intelligence,
-            test: _test,
-            response,
-            result: _result,
-            choices: vec![],
-        };
-        dialog_lines.insert(number, dialog_line);
-
-        if response.is_none() {
-            last_npc_number = number;
-        } else {
-            dialog_lines
-                .entry(last_npc_number)
-                .and_modify(|line| line.choices.push(number));
+        match DialogLine::try_from(line) {
+            Ok(dialog_line) => {
+                if dialog_line.response.is_none() {
+                    last_npc_number = dialog_line.number;
+                } else {
+                    dialog_lines
+                        .entry(last_npc_number)
+                        .and_modify(|line| line.choices.push(dialog_line.number));
+                }
+                dialog_lines.insert(dialog_line.number, dialog_line);
+            }
+            Err(e) => return Err(anyhow::anyhow!("Failed to parse dialog line: {}", e)),
         }
     }
-
     Ok(dialog_lines)
 }
 
@@ -120,18 +92,25 @@ struct Npc {
     dialog_tree: DialogTree,
 }
 
-impl Display for Npc {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({:?})", self.name, self.state)
-    }
-}
-
 impl Npc {
+    #[allow(dead_code)]
     fn new(name: &str, dialog_file: &str, state: NpcState) -> Self {
         Self {
             name: name.to_string(),
             state,
-            dialog_tree: parse_dlg_file(dialog_file).unwrap(),
+            dialog_tree: parse_dialog_file(dialog_file).unwrap(),
+        }
+    }
+
+    fn rand(dialog_file: &str) -> Self {
+        Self {
+            name: NAMES
+                .iter()
+                .choose_stable(&mut rand::rng())
+                .unwrap()
+                .to_string(),
+            state: rand::random(),
+            dialog_tree: parse_dialog_file(dialog_file).unwrap(),
         }
     }
 
@@ -163,6 +142,7 @@ impl Npc {
         }
         self.interact_rec(1);
     }
+
     fn interact_rec(&mut self, number: usize) {
         if number == 0 {
             // Reached end
@@ -182,9 +162,10 @@ impl Npc {
         for number in &npc_line.choices {
             items.push(&self.dialog_tree.get(number).unwrap().text)
         }
-
+        let npc_text = npc_line.get_text(&GENDER);
+        let prompt = format!("{}: {}", &self.name, npc_text);
         let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt(format!("{}: {}", &self.name, &npc_line.text))
+            .with_prompt(prompt)
             .items(&items)
             .interact()
             .unwrap();
@@ -241,7 +222,7 @@ impl Npc {
 }
 
 fn main() {
-    let mut npc = Npc::new("Alice", "dlg/example.dlg", NpcState::Waiting);
+    let mut npc = Npc::rand("dlg/example.dlg");
 
     let items = vec!["Talk", "Leave"];
     loop {
