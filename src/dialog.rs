@@ -11,79 +11,15 @@ pub struct DialogLine {
     pub choices: Vec<usize>,
 }
 
-impl DialogLine {
-    pub fn new(
-        number: usize,
-        text: String,
-        female_text: Option<String>,
-        intelligence: Option<i32>,
-        test: Option<String>,
-        response: Option<usize>,
-        result: Option<String>,
-    ) -> Self {
-        Self {
-            number,
-            text,
-            female_text,
-            intelligence,
-            test,
-            response,
-            result,
-            choices: vec![],
-        }
-    }
-
-    // pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {}
-}
-
-// impl From<String> for DialogLine {
-//     fn from(value: String) -> Self {
-//         // Thank you, ChatGPT, this is actually pretty elegant.
-//         // Find all matches of text inside braces
-//         let mut parts: Vec<String> = value
-//             .match_indices('{') // Find positions of `{`
-//             .zip(value.match_indices('}')) // Match with `}`
-//             .map(|((start, _), (end, _))| &value[start + 1..end]) // Extract text between `{}` pairs
-//             .take(7) // Only take the first 7 pairs
-//             .map(str::trim) // Trim leading/trailing whitespace
-//             .map(String::from) // Convert to owned String
-//             .collect();
-//
-//         // Assert that there are exactly 7 parts
-//         assert_eq!(
-//             parts.len(),
-//             7,
-//             "Expected exactly 7 brace pairs, but found {}: {:?}",
-//             parts.len(),
-//             parts
-//         );
-//
-//         Self {
-//             number: parts
-//                 .get(0)
-//                 .unwrap_or_else(|| panic!("Missing or invalid `number` field"))
-//                 .parse::<usize>()
-//                 .unwrap_or_else(|_| panic!("`number` field must be a valid usize")),
-//             text: parts.get(1).cloned().unwrap(),
-//             female_text: parts.get(2).map(|s| s.clone()).filter(|s| !s.is_empty()),
-//             intelligence: parts.get(3).and_then(|s| s.parse::<i32>().ok()),
-//             test: parts.get(4).map(|s| s.clone()).filter(|s| !s.is_empty()),
-//             response: parts.get(5).map(|s| s.clone()).filter(|s| !s.is_empty()),
-//             result: parts.get(6).map(|s| s.clone()).filter(|s| !s.is_empty()),
-//             choices: vec![],
-//         }
-//     }
-// }
-
 impl TryFrom<String> for DialogLine {
-    type Error = String; // The error type is a string for easier debugging.
+    type Error = String;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let parts: Vec<String> = value
             .match_indices('{')
             .zip(value.match_indices('}'))
             .map(|((start, _), (end, _))| &value[start + 1..end])
-            .take(7) // Limit to the first 7 brace pairs
+            .take(7)
             .map(str::trim)
             .map(String::from)
             .collect();
@@ -110,7 +46,7 @@ impl TryFrom<String> for DialogLine {
             test,
             response,
             result,
-            choices: vec![], // You can handle this later if needed
+            choices: vec![],
         })
     }
 }
