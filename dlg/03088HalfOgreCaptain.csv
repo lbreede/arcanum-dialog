@@ -1,0 +1,5 @@
+{	1	}{	Are ye ready to return to Caladon, sir?	}{	Are ye ready to return to Caladon, miss?	}{		}{		}{		}{	 	}
+{	2	}{	Yes.	}{		}{	5	}{		}{	-2	}{	 	}
+{	3	}{	Okay!	}{		}{	-4	}{		}{	-2	}{	 	}
+{	19	}{	N:	}{		}{	1	}{		}{	0	}{	fl 20	}
+{	20	}{	Fine, fine. Let me be knowin' when ye wish to leave.	}{	Fine, fine. Let me be knowin' when ye wish to leave.	}{		}{		}{		}{	 	}

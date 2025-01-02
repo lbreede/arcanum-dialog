@@ -40,7 +40,7 @@ def main():
         s += " }{ ".join(g.rjust(w) if g.isdigit() else g.ljust(w) for g, w in zip(group, group_widths))
         s += " }\n"
 
-    file = root + "_formatted.dlg"
+    file = root + "_pretty.dlg"
     with open(file, "w", encoding="utf-8") as fp:
         fp.write(s)
 
