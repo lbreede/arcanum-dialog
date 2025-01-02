@@ -1,22 +1,22 @@
-{  1 }{ How can I help you?           }{ How can I help you?           }{   }{    }{    }{    }
-{  2 }{ B:                            }{                               }{ 5 }{    }{  8 }{    }
-{  3 }{ U: 12                         }{                               }{ 5 }{    }{  8 }{    }
-{  4 }{ K:                            }{                               }{ 5 }{    }{ 22 }{    }
-{  5 }{ I need you to do something... }{                               }{ 5 }{ fo }{ 15 }{    }
-{  6 }{ Let’s Go.                     }{                               }{ 5 }{ wa }{  0 }{ uw }
-{  7 }{ Nothing never mind.           }{                               }{ 5 }{    }{  0 }{    }
-{  8 }{ Is there any thing else?      }{ Is there any thing else?      }{   }{    }{    }{    }
-{  9 }{ B:                            }{                               }{   }{    }{  8 }{    }
-{ 10 }{ U: 12                         }{                               }{   }{    }{  8 }{    }
-{ 11 }{ K:                            }{                               }{   }{    }{ 22 }{    }
-{ 12 }{ I need you to do something... }{                               }{   }{    }{ 15 }{    }
-{ 13 }{ Let’s Go.                     }{                               }{   }{    }{  0 }{    }
-{ 14 }{ No. Nothing else.             }{                               }{   }{    }{  0 }{    }
-{ 15 }{ What would you like me to do? }{ What would you like me to do? }{   }{    }{    }{    }
-{ 16 }{ Move away.                    }{                               }{ 5 }{    }{  8 }{ so }
-{ 17 }{ Move closer.                  }{                               }{ 5 }{    }{  8 }{ sc }
-{ 18 }{ Wait here.                    }{                               }{ 5 }{    }{  8 }{ wa }
-{ 19 }{ Disband.                      }{                               }{ 5 }{    }{  8 }{ lv }
-{ 20 }{ [Back]                        }{                               }{ 5 }{    }{  1 }{    }
-{ 21 }{ Will Do.                      }{ Will Do.                      }{   }{    }{    }{    }
-{ 22 }{ What do you need to know?     }{ What do you need to know?     }{   }{    }{    }{    }
+{1}{How can I help you?}{How can I help you?}{}{}{}{}
+{2}{B:}{}{5}{}{8}{}Barter
+{3}{U: 12}{}{5}{}{8}{}Use Skill
+{4}{K:}{}{5}{}{22}{}Questions
+{5}{I need you to do something...}{}{5}{fo}{15}{}Formation
+{6}{Let’s Go.}{}{5}{wa}{0}{uw}Stop Waiting
+{7}{Nothing never mind.}{}{5}{}{0}{}Exit
+{8}{Is there any thing else?}{Is there any thing else?}{}{}{}{}
+{9}{B:}{}{}{}{8}{}Barter
+{10}{U: 12}{}{}{}{8}{}Use Skill
+{11}{K:}{}{}{}{22}{}Questions
+{12}{I need you to do something...}{}{}{}{15}{}Formation
+{13}{Let’s Go.}{}{}{}{0}{}Stop Waiting
+{14}{No. Nothing else.}{}{}{}{0}{}Exit
+{15}{What would you like me to do?}{What would you like me to do?}{}{}{}{}
+{16}{Move away.}{}{5}{}{8}{so}
+{17}{Move closer.}{}{5}{}{8}{sc}
+{18}{Wait here.}{}{5}{}{8}{wa}
+{19}{Disband.}{}{5}{}{8}{lv}
+{20}{[Back]}{}{5}{}{1}{}
+{21}{Will Do.}{Will Do.}{}{}{}{}
+{22}{What do you need to know?}{What do you need to know?}{}{}{}{}

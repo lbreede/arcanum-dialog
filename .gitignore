@@ -22,3 +22,5 @@ Cargo.lock
 
 # Arcanum dialog files
 dlg/*.dlg
+
+.DS_Store
