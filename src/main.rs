@@ -244,11 +244,15 @@ impl Npc {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut npc = match &args[..] {
-        [_, path] => Npc::new("Tim", path, NpcState::Follower),
-        [_] => Npc::rand(),
-        _ => panic!("Not sure how to handle {:?}", &args),
+
+    let mut npc = if args.len() == 1 {
+        Npc::rand()
+    } else if args.len() == 2 {
+        Npc::new("Tim", &args[1], NpcState::Follower)
+    } else {
+        panic!("Not sure how to handle {:?}", &args)
     };
+
     let items = vec!["Talk", "Leave"];
     loop {
         let selection = Select::with_theme(&ColorfulTheme::default())

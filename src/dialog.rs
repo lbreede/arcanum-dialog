@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+
 #[derive(Debug, Clone)]
 pub struct DialogLine {
     pub number: usize,
